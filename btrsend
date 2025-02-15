@@ -1,0 +1,9 @@
+#! /bin/sh
+
+if [ "$1" = "help" ]; then
+    echo "btrsend [Previous Snapshot] [New Snapshot] [Destination Disk] [Destination Directory]"
+else
+    sudo btrfs send -p $1 $2 | sudo btrfs receive /mnt/$3/.btrfs_snapshots/$4
+fi
+     
+
