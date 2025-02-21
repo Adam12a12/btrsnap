@@ -1,6 +1,120 @@
 #! /bin/sh
 
-sudo btrfs subvolume snapshot -r / /home/$USER/.btrfs_snapshots/root/root_$(date +%Y-%m-%d_%H-%M-%S) 
-sudo btrfs subvolume snapshot -r /home /home/$USER/.btrfs_snapshots/home/home_$(date +%Y-%m-%d_%H-%M-%S) 
+#CONF_FILE="/etc/btrsnap.conf"
+CONF_FILE="/home/tony/devel/btrsnap.conf"
+DESTINATION="/btrfs_snapshots"
+VERSION="btrsnap v0.1"
 
+if [ ! -f "$CONF_FILE" ]; then
+    touch "$CONF_FILE"
+fi
+
+
+add_subvolume(){
+    if [ ! -d "$1" ]; then
+        echo "Error: Subvolume path does not exist!"
+        return
+    fi
+    exists=0
+    while IFS= read -r subvolume; do
+	if [ $subvolume = "$1" ]; then
+	    exists=1
+	fi
+    done < "$CONF_FILE"
+    if [ $exists -eq 0 ]; then
+	echo "$(realpath $1)" >> "$CONF_FILE"
+	echo "Subvolume $(basename $1) added to config"
+    else
+	echo "Subvolume $(basename $1) already exists!"
+    fi
+    
+}
+
+snap(){
+    while IFS= read -r subvolume; do
+	subvolume_name="$(basename "$subvolume")_$(date +%Y-%m-%d_%H-%M-%S)"
+        sudo btrfs subvolume snapshot -r $subvolume "$DESTINATION"/$(basename $"subvolume")/subvolume_name
+    done < "$CONF_FILE"
+}
+
+remove_path(){
+    sed -in "/$1$/d" $CONF_FILE
+}
+
+delete_oldest(){
+    echo "coming soon!!!"
+}
+
+delete_snapshot(){
+    btrfs subvolume delete "$(realpath $1)"
+}
+
+list_snapshots(){
+    if [ ! -d "$2" ]; then
+	for s in $(ls "$DESTINATION/$2") ; do
+	    echo "$s"
+	done
+    fi
+}
+
+list_subvolumes(){
+    if [ ! -d "$DESTINATION" ]; then
+	for s in $(ls "$DESTINATION") ; do
+	    echo "$s"
+	done
+    fi
+}
+
+print_version(){
+    echo "$VERSION"
+}
+
+help(){
+    echo "usage: btrsnap [option] [args]"
+    echo ""
+    echo "options:"
+    echo "   -s|--snap              takes snapshot of all subvolumes in config"
+    echo "   -a|--add-subvolume     adds subvolume to config"
+    echo "   -r|--remove-path       removes subvolume path from config"
+    echo "   -d|--delete-snapshot   deletes snapshot"
+    echo "   -h|--help              prints this message"
+    echo "   -ls|--list-snapshots   lists taken snapshots"
+    echo "   -l|--list-subvolumes   lists subvolumes that has snapshots taken"
+    echo "   -v|--version           prints btrsnap version"
+}
+
+invalid_input(){
+    echo "unrecongnized option"
+    echo "do btrfs -h for help"
+}
+
+case $1 in
+    -s | --snap)
+	snap
+	;;
+    -a | --add-subvolume)
+	add_subvolume "$2"
+	;;
+    -r | --remove-path)
+	remove_path "$2"
+	;;
+    -d | --delete-snapshot)
+	delete_snapshot "$2"
+	;;
+    -ls|--list-snapshots)
+	list_snapshots
+	;;
+    -l|--list-subvolumes)
+	list_subvolumes
+	;;
+    -v|--version)
+	print_version
+	;;
+    -h | --help)
+	help
+	;;
+    *)
+	invalid_input
+	;;
+esac
 
