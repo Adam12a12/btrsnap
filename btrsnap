@@ -1,6 +1,144 @@
 #! /bin/sh
 
-sudo btrfs subvolume snapshot -r / /home/$USER/.btrfs_snapshots/root/root_$(date +%Y-%m-%d_%H-%M-%S) 
-sudo btrfs subvolume snapshot -r /home /home/$USER/.btrfs_snapshots/home/home_$(date +%Y-%m-%d_%H-%M-%S) 
+CONF_FILE="/etc/btrsnap.conf"
+DESTINATION="/mnt/btrfs_snapshots"
+VERSION="btrsnap v0.1"
+
+if [ ! -f "$CONF_FILE" ]; then
+    sudo touch "$CONF_FILE"
+fi
 
 
+add_subvolume(){
+    if [ ! -d "$1" ]; then
+        echo "Error: Subvolume path does not exist!"
+        return
+    fi
+    exists=0
+    while IFS= read -r subvolume; do
+	if [ $subvolume = "$(realpath "$1")" ]; then
+	    exists=1
+	fi
+    done < "$CONF_FILE"
+    if [ $exists -eq 0 ]; then
+	echo "$(realpath $1)" >> "$CONF_FILE"
+	[ $? -eq 0 ] && echo "Subvolume $(basename $1) added to config"
+	[ $? -eq 1 ] && echo "Permission denied"
+    else
+	echo "Subvolume $(basename $1) already exists!"
+    fi
+    
+}
+
+snap(){
+    if [ ! -d "$DESTINATION" ]; then
+        sudo mkdir "$DESTINATION"
+    fi
+    while IFS= read -r subvolume; do
+	if [ "$subvolume" = "/" ]; then
+	    subvolume_name=root
+	else
+	    subvolume_name=$(basename $subvolume)
+	fi
+	if [ ! -d "$DESTINATION/$subvolume_name" ]; then
+	    sudo mkdir $DESTINATION/$subvolume_name
+	fi
+	snapshot_name=""$subvolume_name"_$(date +%Y-%m-%d_%H-%M-%S)"
+	sudo btrfs subvolume snapshot -r $subvolume $DESTINATION/$subvolume_name/$snapshot_name
+    done < "$CONF_FILE"
+}
+
+remove_path(){
+    sudo sed -in "/\/$1$/d" $CONF_FILE
+}
+
+delete_oldest(){
+    echo "coming soon!!!"
+}
+
+delete_snapshot(){
+    sudo btrfs subvolume delete $1
+}
+
+list_snapshots(){
+    if [ -z "$1" ]; then
+       echo "Specify subvolume"
+       return
+    elif [ ! -d "$DESTIINATION/$1" ]; then
+    echo "Subvolume $1 has no snapshots"
+    return
+    fi
+    for s in $(ls "$DESTINATION/$1") ; do
+	echo "$s"
+    done
+}
+
+list_subvolumes(){
+    for s in $(ls "$DESTINATION") ; do
+	echo "$s"
+    done
+}
+
+list_paths(){
+    cat $CONF_FILE
+}
+
+print_version(){
+    echo "$VERSION"
+}
+
+help(){
+    echo "usage: btrsnap [option] [args]"
+    echo ""
+    echo "options:"
+    echo "   -s|--snap                        takes snapshot of all subvolumes in config"
+    echo "   -a|--add-subvolume <path>        adds subvolume to config"
+    echo "   -r|--remove-path <subvolume>     removes subvolume path from config"
+    echo "   -d|--delete-snapshot <snapshot>  alias to btrfs subvolume delete"
+    echo "   -h|--help                        prints this message"
+    echo "  -ls|--list-snapshots <subvolume>  lists taken snapshots"
+    echo "  -lp|--list-paths                  lists all paths in config"
+    echo "   -l|--list-subvolumes             lists subvolumes that has snapshots taken"
+    echo "   -v|--version                     prints btrsnap version"
+    echo ""
+    echo "btrfs subvolumes must be created then you can add its path"
+    echo "do sudo btrfs subvolume create <subvolume> to create a btrfs subvolume"
+}
+
+invalid_input(){
+    echo "unrecongnized option"
+    echo "do btrfs -h for help"
+}
+
+case $1 in
+    -s | --snap)
+	snap
+	;;
+    -a | --add-subvolume)
+	add_subvolume "$2"
+	;;
+    -r | --remove-path)
+	remove_path "$2"
+	;;
+    -d | --delete-snapshot)
+	delete_snapshot "$2"
+	;;
+    -ls|--list-snapshots)
+	list_snapshots "$2"
+	;;
+    -l|--list-subvolumes)
+	list_subvolumes
+	;;
+    -lp|--list-paths)
+	list_paths
+	;;
+    -v|--version)
+	print_version
+	;;
+    -h | --help)
+	help
+	;;
+    *)
+	invalid_input
+	;;
+esac
