@@ -30,22 +30,31 @@ add_subvolume(){
     
 }
 
-snap(){
+create_dest(){
     if [ ! -d "$DESTINATION" ]; then
         sudo mkdir "$DESTINATION"
     fi
+}
+
+snap_from_conf(){
+    create_dest
     while IFS= read -r subvolume; do
-	if [ "$subvolume" = "/" ]; then
-	    subvolume_name=root
-	else
-	    subvolume_name=$(basename $subvolume)
-	fi
-	if [ ! -d "$DESTINATION/$subvolume_name" ]; then
-	    sudo mkdir $DESTINATION/$subvolume_name
-	fi
-	snapshot_name=""$subvolume_name"_$(date +%Y-%m-%d_%H-%M-%S)"
-	sudo btrfs subvolume snapshot -r $subvolume $DESTINATION/$subvolume_name/$snapshot_name
+	snap "$subvolume"
     done < "$CONF_FILE"
+}
+
+snap(){
+    create_dest
+    if [ "$1" = "/" ]; then
+	subvolume_name=root
+    else
+	subvolume_name=$(basename $1)
+    fi
+    if [ ! -d "$DESTINATION/$subvolume_name" ]; then
+	sudo mkdir $DESTINATION/$subvolume_name
+    fi
+    snapshot_name=""$subvolume_name"_$(date +%Y-%m-%d_%H-%M-%S)"
+    sudo btrfs subvolume snapshot -r $1 $DESTINATION/$subvolume_name/$snapshot_name
 }
 
 remove_path(){
@@ -91,15 +100,17 @@ help(){
     echo "usage: btrsnap [option] [args]"
     echo ""
     echo "options:"
-    echo "   -s|--snap                        takes snapshot of all subvolumes in config"
-    echo "   -a|--add-subvolume <path>        adds subvolume to config"
-    echo "   -r|--remove-path <subvolume>     removes subvolume path from config"
-    echo "   -d|--delete-snapshot <snapshot>  alias to btrfs subvolume delete"
-    echo "   -h|--help                        prints this message"
-    echo "  -ls|--list-snapshots <subvolume>  lists taken snapshots"
-    echo "  -lp|--list-paths                  lists all paths in config"
-    echo "   -l|--list-subvolumes             lists subvolumes that has snapshots taken"
-    echo "   -v|--version                     prints btrsnap version"
+    echo "   -s               takes snapshot of all subvolumes in config"
+    echo "   -t <subvolume>   takes snapshots of specific subvolume"
+    echo "   -e               specify destination of snapshot"
+    echo "   -a <path>        adds subvolume to config"
+    echo "   -r <subvolume>   removes subvolume path from config"
+    echo "   -d <snapshot>    alias to btrfs subvolume delete"
+    echo "   -h               prints this message"
+    echo "   -n <subvolume>   lists taken snapshots"
+    echo "   -p               lists all paths in config"
+    echo "   -l               lists subvolumes that has snapshots taken"
+    echo "   -v               prints btrsnap version"
     echo ""
     echo "btrfs subvolumes must be created then you can add its path"
     echo "do sudo btrfs subvolume create <subvolume> to create a btrfs subvolume"
@@ -110,35 +121,44 @@ invalid_input(){
     echo "do btrfs -h for help"
 }
 
-case $1 in
-    -s | --snap)
-	snap
-	;;
-    -a | --add-subvolume)
-	add_subvolume "$2"
-	;;
-    -r | --remove-path)
-	remove_path "$2"
-	;;
-    -d | --delete-snapshot)
-	delete_snapshot "$2"
-	;;
-    -ls|--list-snapshots)
-	list_snapshots "$2"
-	;;
-    -l|--list-subvolumes)
-	list_subvolumes
-	;;
-    -lp|--list-paths)
-	list_paths
-	;;
-    -v|--version)
-	print_version
-	;;
-    -h | --help)
-	help
-	;;
-    *)
-	invalid_input
-	;;
-esac
+while getopts ":a:r:d:n:slpvhe:t:" option; do
+    case $option in
+	s)
+	    snap_from_conf
+	    ;;
+	a)
+	    add_subvolume "$OPTARG"
+	    ;;
+	r)
+	    remove_path "$OPTARG"
+	    ;;
+	d)
+	    delete_snapshot "$OPTARG"
+	    ;;
+	n)
+	    list_snapshots "$OPTARG"
+	    ;;
+	t)
+	    snap "$OPTARG"
+	    ;;
+	l)
+	    list_subvolumes
+	    ;;
+	p)
+	    list_paths
+	    ;;
+	v)
+	    print_version
+	    ;;
+	h)
+	    help
+	    ;;
+	e)
+	    DESTINATION="$(realpath "$OPTARG")/btrfs_snapshots"
+	    ;;
+	
+	*)
+	    invalid_input
+	    ;;
+    esac
+done
