@@ -91,15 +91,15 @@ help(){
     echo "usage: btrsnap [option] [args]"
     echo ""
     echo "options:"
-    echo "   -s|--snap                        takes snapshot of all subvolumes in config"
-    echo "   -a|--add-subvolume <path>        adds subvolume to config"
-    echo "   -r|--remove-path <subvolume>     removes subvolume path from config"
-    echo "   -d|--delete-snapshot <snapshot>  alias to btrfs subvolume delete"
-    echo "   -h|--help                        prints this message"
-    echo "  -ls|--list-snapshots <subvolume>  lists taken snapshots"
-    echo "  -lp|--list-paths                  lists all paths in config"
-    echo "   -l|--list-subvolumes             lists subvolumes that has snapshots taken"
-    echo "   -v|--version                     prints btrsnap version"
+    echo "   -s               takes snapshot of all subvolumes in config"
+    echo "   -a <path>        adds subvolume to config"
+    echo "   -r <subvolume>   removes subvolume path from config"
+    echo "   -d <snapshot>    alias to btrfs subvolume delete"
+    echo "   -h               prints this message"
+    echo "   -n <subvolume>   lists taken snapshots"
+    echo "   -p               lists all paths in config"
+    echo "   -l               lists subvolumes that has snapshots taken"
+    echo "   -v               prints btrsnap version"
     echo ""
     echo "btrfs subvolumes must be created then you can add its path"
     echo "do sudo btrfs subvolume create <subvolume> to create a btrfs subvolume"
@@ -110,35 +110,37 @@ invalid_input(){
     echo "do btrfs -h for help"
 }
 
-case $1 in
-    -s | --snap)
-	snap
-	;;
-    -a | --add-subvolume)
-	add_subvolume "$2"
-	;;
-    -r | --remove-path)
-	remove_path "$2"
-	;;
-    -d | --delete-snapshot)
-	delete_snapshot "$2"
-	;;
-    -ls|--list-snapshots)
-	list_snapshots "$2"
-	;;
-    -l|--list-subvolumes)
-	list_subvolumes
-	;;
-    -lp|--list-paths)
-	list_paths
-	;;
-    -v|--version)
-	print_version
-	;;
-    -h | --help)
-	help
-	;;
-    *)
-	invalid_input
-	;;
-esac
+while getopts ":a:r:d:n:slpvh" option; do
+    case $option in
+	s)
+	    snap
+	    ;;
+	a)
+	    add_subvolume "$OPTARG"
+	    ;;
+	r)
+	    remove_path "$OPTARG"
+	    ;;
+	d)
+	    delete_snapshot "$OPTARG"
+	    ;;
+	n)
+	    list_snapshots "$OPTARG"
+	    ;;
+	l)
+	    list_subvolumes
+	    ;;
+	p)
+	    list_paths
+	    ;;
+	v)
+	    print_version
+	    ;;
+	h)
+	    help
+	    ;;
+	*)
+	    invalid_input
+	    ;;
+    esac
+done
