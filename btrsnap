@@ -110,7 +110,7 @@ invalid_input(){
     echo "do btrfs -h for help"
 }
 
-while getopts ":a:r:d:n:slpvh" option; do
+while getopts ":a:r:d:n:slpvhe:" option; do
     case $option in
 	s)
 	    snap
@@ -138,6 +138,9 @@ while getopts ":a:r:d:n:slpvh" option; do
 	    ;;
 	h)
 	    help
+	    ;;
+	e)
+	    DESTINATION="$(realpath "$OPTARG")/btrfs_snapshots"
 	    ;;
 	*)
 	    invalid_input
