@@ -102,6 +102,7 @@ help(){
     echo "options:"
     echo "   -s               takes snapshot of all subvolumes in config"
     echo "   -t <subvolume>   takes snapshots of specific subvolume"
+    echo "   -e               specify destination of snapshot"
     echo "   -a <path>        adds subvolume to config"
     echo "   -r <subvolume>   removes subvolume path from config"
     echo "   -d <snapshot>    alias to btrfs subvolume delete"
@@ -138,7 +139,6 @@ while getopts ":a:r:d:n:slpvhe:t:" option; do
 	    list_snapshots "$OPTARG"
 	    ;;
 	t)
-	    DESTINATION="$(realpath "$OPTARG")/btrfs_snapshots"
 	    snap "$OPTARG"
 	    ;;
 	l)
@@ -153,6 +153,10 @@ while getopts ":a:r:d:n:slpvhe:t:" option; do
 	h)
 	    help
 	    ;;
+	e)
+	    DESTINATION="$(realpath "$OPTARG")/btrfs_snapshots"
+	    ;;
+	
 	*)
 	    invalid_input
 	    ;;
