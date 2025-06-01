@@ -1,13 +1,11 @@
 #! /bin/sh
+PATHS_FILE="/etc/btrsnap_paths.conf"
+DESTINATION="/btrfs_snapshots"
+VERSION="btrsnap v0.3"
 
-CONF_FILE="/etc/btrsnap.conf"
-DESTINATION="/mnt/btrfs_snapshots"
-VERSION="btrsnap v0.1"
-
-if [ ! -f "$CONF_FILE" ]; then
-    sudo touch "$CONF_FILE"
+if [ ! -f "$PATHS_FILE" ]; then
+    sudo touch "$PATHS_FILE"
 fi
-
 
 add_subvolume(){
     if [ ! -d "$1" ]; then
@@ -19,9 +17,9 @@ add_subvolume(){
 	if [ $subvolume = "$(realpath "$1")" ]; then
 	    exists=1
 	fi
-    done < "$CONF_FILE"
+    done < "$PATHS_FILE"
     if [ $exists -eq 0 ]; then
-	echo "$(realpath $1)" >> "$CONF_FILE"
+	echo "$(realpath $1)" >> "$PATHS_FILE"
 	[ $? -eq 0 ] && echo "Subvolume $(basename $1) added to config"
 	[ $? -eq 1 ] && echo "Permission denied"
     else
@@ -40,7 +38,7 @@ snap_from_conf(){
     create_dest
     while IFS= read -r subvolume; do
 	snap "$subvolume"
-    done < "$CONF_FILE"
+    done < "$PATHS_FILE"
 }
 
 snap(){
@@ -58,11 +56,22 @@ snap(){
 }
 
 remove_path(){
-    sudo sed -in "/\/$1$/d" $CONF_FILE
+    sudo sed -in "/\/$1$/d" $PATHS_FILE
 }
 
 delete_oldest(){
-    echo "coming soon!!!"
+    duration=7
+    delete="$(date --date=""$duration" days ago" +"%Y")-$(date --date=""$duration" days ago" +"%m")-$(date --date=""$duration" days ago" +"%d")_$(date --date=""$duration" days ago" +"%H")-$(date --date=""$duration" days ago" +"%M")-$(date --date=""$duration" days ago" +"%S")"
+    echo $delete
+    for volume in "$DESTINATION/*/" ; do
+	for snapshot in "$volume/*/" ; do
+	    if [ "$(basename $snapshot)" /< "$delete" ]; then
+		echo "$(basename $snapshot)"
+	    fi
+	    echo $snapshot
+	    echo $delete
+	done
+    done
 }
 
 delete_snapshot(){
@@ -89,7 +98,7 @@ list_subvolumes(){
 }
 
 list_paths(){
-    cat $CONF_FILE
+    cat $PATHS_FILE
 }
 
 print_version(){
@@ -121,7 +130,7 @@ invalid_input(){
     echo "do btrfs -h for help"
 }
 
-while getopts ":a:r:d:n:slpvhe:t:" option; do
+while getopts ":a:r:d:n:slpxvhe:t:" option; do
     case $option in
 	s)
 	    snap_from_conf
@@ -157,6 +166,9 @@ while getopts ":a:r:d:n:slpvhe:t:" option; do
 	    DESTINATION="$(realpath "$OPTARG")/btrfs_snapshots"
 	    ;;
 	
+	x)
+	    delete_oldest
+	    ;;
 	*)
 	    invalid_input
 	    ;;
