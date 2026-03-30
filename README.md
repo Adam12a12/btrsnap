@@ -10,10 +10,3 @@ small bash script to take full backup using btrfs
 2- Quick snapshot taking in an organized directory structure with timestamps
 
 3- Auto deletion of old snapshots (Coming soon)
-
-
-## Installation
-
-1- Clone the repository
-
-2- Copy the "btrsnap" file into your path
